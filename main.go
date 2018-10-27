@@ -24,16 +24,17 @@ struct readline_event_t {
 BPF_PERF_OUTPUT(readline_events);
 
 int get_return_value(struct pt_regs *ctx) {
-				struct readline_event_t event = {};
-				u32 pid;
-				if (!PT_REGS_RC(ctx))
-								return 0;
-				pid = bpf_get_current_pid_tgid();
-				event.pid = pid;
-				bpf_probe_read(&event.str, sizeof(event.str), (void *)PT_REGS_RC(ctx));
-				readline_events.perf_submit(ctx, &event, sizeof(event));
+	struct readline_event_t event = {};
+	u32 pid;
+	if (!PT_REGS_RC(ctx)) {
+		return 0;
+	}
+	pid = bpf_get_current_pid_tgid();
+	event.pid = pid;
+	bpf_probe_read(&event.str, sizeof(event.str), (void *)PT_REGS_RC(ctx));
+	readline_events.perf_submit(ctx, &event, sizeof(event));
 
-				return 0;
+	return 0;
 }
 `
 
@@ -42,11 +43,30 @@ type readlineEvent struct {
 	Str [80]byte
 }
 
-// TODO(fntlnz): add comments to the various parts, make it configurable via env for k8s
-// Write the yaml file for k8s
 func main() {
+	mdb := os.Getenv("MONITOR_DATABASE")
+	mrp := os.Getenv("MONITOR_RP")
+	maddr := os.Getenv("MONITOR_HOST")
+	binaryName := os.Getenv("URETPROBE_BINARY")
+
+	if len(mdb) == 0 {
+		log.Fatalf("MONITOR_DATABASE environment variable missing")
+	}
+
+	if len(mrp) == 0 {
+		log.Fatalf("MONITOR_RP environment variable missing")
+	}
+
+	if len(maddr) == 0 {
+		log.Fatalf("MONITOR_HOST environment variable missing")
+	}
+
+	if len(binaryName) == 0 {
+		binaryName = "/bin/bash"
+	}
+
 	c, err := client.NewHTTPClient(client.HTTPConfig{
-		Addr: "http://influxdb.monitoring.svc.cluster.local:8086",
+		Addr: maddr,
 	})
 
 	if err != nil {
@@ -81,8 +101,8 @@ func main() {
 		var event readlineEvent
 		for {
 			bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-				Database:        "monitor",
-				RetentionPolicy: "monthly",
+				Database:        mdb,
+				RetentionPolicy: mrp,
 			})
 			if err != nil {
 				log.Printf("%v", err)

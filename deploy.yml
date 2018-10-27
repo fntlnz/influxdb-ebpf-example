@@ -217,6 +217,12 @@ spec:
         env:
         - name: MONITOR_HOST
           value: "http://influxdb.monitoring.svc:8086"
+        - name: MONITOR_RP
+          value: "monthly"
+        - name: MONITOR_DATABASE
+          value: "monitor"
+        - name: URETPROBE_BINARY
+          value: "/bin/bash"
         volumeMounts:
         - name: sys
           mountPath: /sys
