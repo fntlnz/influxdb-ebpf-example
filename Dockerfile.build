@@ -1,0 +1,9 @@
+FROM ubuntu:18.04
+
+RUN apt-get update -y
+RUN apt install golang -y
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D4284CDD
+RUN echo "deb [trusted=yes] https://repo.iovisor.org/apt/xenial xenial-nightly main" | tee /etc/apt/sources.list.d/iovisor.list
+RUN apt install ca-certificates -y
+RUN apt-get update
+RUN apt-get install bcc-tools libbcc-examples linux-headers-4.15.0-34-generic -y
