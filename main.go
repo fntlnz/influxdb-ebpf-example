@@ -42,9 +42,11 @@ type readlineEvent struct {
 	Str [80]byte
 }
 
+// TODO(fntlnz): add comments to the various parts, make it configurable via env for k8s
+// Write the yaml file for k8s
 func main() {
 	c, err := client.NewHTTPClient(client.HTTPConfig{
-		Addr: "http://127.0.0.1:8086",
+		Addr: "http://influxdb.monitoring.svc.cluster.local:8086",
 	})
 
 	if err != nil {
@@ -79,7 +81,8 @@ func main() {
 		var event readlineEvent
 		for {
 			bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-				Database: "uprobe",
+				Database:        "monitor",
+				RetentionPolicy: "monthly",
 			})
 			if err != nil {
 				log.Printf("%v", err)

@@ -1,8 +1,9 @@
 .PHONY: build buildimage
 
-build:
-	docker run -e GOPATH=/go --rm -v $$PWD:/go/src/github.com/fntlnz/influxdb-ebpf-example -w /go/src/github.com/fntlnz/influxdb-ebpf-example -it influxdb-ebpf-example go build .
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null)
+GIT_BRANCH_CLEAN := $(shell echo $(GIT_BRANCH) | sed -e "s/[^[:alnum:]]/-/g")
+IMAGE := quay.io/fntlnz/influxdb-ebpf-example:$(GIT_BRANCH_CLEAN)
 
-buildimage:
-	docker build -t influxdb-ebpf-example -f Dockerfile.build .
+build:
+	docker build -t $(IMAGE) .
 

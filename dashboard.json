@@ -12,7 +12,7 @@
 		"id": 1,
 		"cells": [
 			{
-				"i": "ca77b830-998f-480b-a725-5b422e07ae72",
+				"i": "8af87b9c-fe88-4268-8760-6ea35ba5213e",
 				"x": 0,
 				"y": 0,
 				"w": 12,
@@ -20,11 +20,11 @@
 				"name": "Commands",
 				"queries": [
 					{
-						"query": "SELECT count(\"command\") AS \"count_command\", count(\"args\") AS \"count_args\" FROM \"uprobe\".\"autogen\".\"uprobe\" WHERE time > :dashboardTime: AND \"uprobe\"='readline' GROUP BY time(:interval:), \"pid\" FILL(null)",
+						"query": "SELECT count(\"command\") AS \"count_command\", count(\"args\") AS \"count_args\" FROM \"monitor\".\"monthly\".\"uprobe\" WHERE time > :dashboardTime: AND \"uprobe\"='readline' GROUP BY time(:interval:), \"pid\" FILL(null)",
 						"queryConfig": {
-							"database": "uprobe",
+							"database": "monitor",
 							"measurement": "uprobe",
-							"retentionPolicy": "autogen",
+							"retentionPolicy": "monthly",
 							"fields": [
 								{
 									"value": "count",
@@ -157,11 +157,11 @@
 				"note": "",
 				"noteVisibility": "default",
 				"links": {
-					"self": "/chronograf/v1/dashboards/1/cells/ca77b830-998f-480b-a725-5b422e07ae72"
+					"self": "/chronograf/v1/dashboards/1/cells/8af87b9c-fe88-4268-8760-6ea35ba5213e"
 				}
 			},
 			{
-				"i": "bd05dd95-4c4b-4f7c-82b9-beec0e724e5a",
+				"i": "37e9bcc6-ba28-4e3c-aa3b-ba409700baa0",
 				"x": 0,
 				"y": 4,
 				"w": 12,
@@ -169,21 +169,21 @@
 				"name": "Untitled Graph",
 				"queries": [
 					{
-						"query": "SELECT \"pid\" as pid, \"command\" as command  FROM \"uprobe\".\"autogen\".\"uprobe\" WHERE time > :dashboardTime:",
+						"query": "SELECT \"pid\", \"command\" FROM \"monitor\".\"monthly\".\"uprobe\" WHERE time > :dashboardTime:",
 						"queryConfig": {
-							"database": "uprobe",
+							"database": "monitor",
 							"measurement": "uprobe",
-							"retentionPolicy": "autogen",
+							"retentionPolicy": "monthly",
 							"fields": [
 								{
 									"value": "pid",
 									"type": "field",
-									"alias": "pid"
+									"alias": ""
 								},
 								{
 									"value": "command",
 									"type": "field",
-									"alias": "command"
+									"alias": ""
 								}
 							],
 							"tags": {},
@@ -281,7 +281,7 @@
 				"note": "",
 				"noteVisibility": "default",
 				"links": {
-					"self": "/chronograf/v1/dashboards/1/cells/bd05dd95-4c4b-4f7c-82b9-beec0e724e5a"
+					"self": "/chronograf/v1/dashboards/1/cells/37e9bcc6-ba28-4e3c-aa3b-ba409700baa0"
 				}
 			}
 		],
