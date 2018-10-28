@@ -11,5 +11,29 @@ This example is based on the [bash_readline.go](https://github.com/iovisor/gobpf
 
 See [main.go](main.go) for more details, the source code is heavily commented so that you can understand it.
 
+## Usage
+
+This example was designed to be executed in a Kubernetes cluster so that you can visualize all the bash commands
+executed in our nodes.
+
+To deploy it in your cluster.
+
+```bash
+// Clone the repo and cd into it, then
+$ kubectl create namespace monitoring
+$ kubectl apply -f deploy.yml
+```
+
+Now you can SSH into some of your nodes and start executing commands in a bash prompt.
+
+Once you have this, you will have to reach the chronograf service in the monitoring namespace
+and open it in your browser.
+You can do that using an ingress, a proxy or an SSH tunnel.
+
+Then when you open Chonograf you can import the dashboard in `dashboard.json`.
+
+The dashboard will look like this:
+
+INSERT DASHBOARD IMAGE HERE
 
 

@@ -65,6 +65,9 @@ func main() {
 	// URETPROBE_BINARY is the path of the binary (or library) we want to analyze
 	binaryName := os.Getenv("URETPROBE_BINARY")
 
+	// Get the current node hostname
+	hostname := os.Getenv("HOSTNAME")
+
 	if len(mdb) == 0 {
 		log.Fatalf("MONITOR_DATABASE environment variable missing")
 	}
@@ -151,7 +154,7 @@ func main() {
 			comm := string(event.Str[:bytes.IndexByte(event.Str[:], 0)])
 
 			// Prepare the tags for InfluxDB
-			tags := map[string]string{"uprobe": "readline", "pid": fmt.Sprintf("%d", event.Pid)}
+			tags := map[string]string{"uprobe": "readline", "pid": fmt.Sprintf("%d", event.Pid), "hostname": hostname}
 
 			// Prepare the fields for InfluxDB
 			fields := map[string]interface{}{
