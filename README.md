@@ -34,6 +34,5 @@ Then when you open Chonograf you can import the dashboard in `dashboard.json`.
 
 The dashboard will look like this:
 
-INSERT DASHBOARD IMAGE HERE
 
-
+![Chronograf showing the uprobes for readline](img/chronograf.jpg)
