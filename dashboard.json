@@ -1,6 +1,6 @@
 {
 	"meta": {
-		"chronografVersion": "201810112144~nightly",
+		"chronografVersion": "201810261711~nightly",
 		"sources": {
 			"1": {
 				"name": "Influx 1",
@@ -12,7 +12,7 @@
 		"id": 1,
 		"cells": [
 			{
-				"i": "8af87b9c-fe88-4268-8760-6ea35ba5213e",
+				"i": "073802fc-4f0b-4a5f-a802-739fbf576866",
 				"x": 0,
 				"y": 0,
 				"w": 12,
@@ -20,7 +20,7 @@
 				"name": "Commands",
 				"queries": [
 					{
-						"query": "SELECT count(\"command\") AS \"count_command\", count(\"args\") AS \"count_args\" FROM \"monitor\".\"monthly\".\"uprobe\" WHERE time > :dashboardTime: AND \"uprobe\"='readline' GROUP BY time(:interval:), \"pid\" FILL(null)",
+						"query": "SELECT count(\"command\") AS \"count_command\", count(\"args\") AS \"count_args\" FROM \"monitor\".\"monthly\".\"uprobe\" WHERE time > :dashboardTime: AND \"uprobe\"='readline' GROUP BY time(:interval:), \"pid\", \"hostname\" FILL(null)",
 						"queryConfig": {
 							"database": "monitor",
 							"measurement": "uprobe",
@@ -59,7 +59,8 @@
 							"groupBy": {
 								"time": "auto",
 								"tags": [
-									"pid"
+									"pid",
+									"hostname"
 								]
 							},
 							"areTagsAccepted": true,
@@ -157,42 +158,31 @@
 				"note": "",
 				"noteVisibility": "default",
 				"links": {
-					"self": "/chronograf/v1/dashboards/1/cells/8af87b9c-fe88-4268-8760-6ea35ba5213e"
+					"self": "/chronograf/v1/dashboards/1/cells/073802fc-4f0b-4a5f-a802-739fbf576866"
 				}
 			},
 			{
-				"i": "37e9bcc6-ba28-4e3c-aa3b-ba409700baa0",
+				"i": "033fc23c-eff1-49ca-b3d6-94bfc04b4465",
 				"x": 0,
 				"y": 4,
 				"w": 12,
-				"h": 4,
+				"h": 11,
 				"name": "Untitled Graph",
 				"queries": [
 					{
-						"query": "SELECT \"pid\", \"command\" FROM \"monitor\".\"monthly\".\"uprobe\" WHERE time > :dashboardTime:",
+						"query": "SELECT \"command\", round(\"pid\"), \"hostname\" FROM \"monitor\".\"monthly\".\"uprobe\" WHERE time > :dashboardTime:",
 						"queryConfig": {
-							"database": "monitor",
-							"measurement": "uprobe",
-							"retentionPolicy": "monthly",
-							"fields": [
-								{
-									"value": "pid",
-									"type": "field",
-									"alias": ""
-								},
-								{
-									"value": "command",
-									"type": "field",
-									"alias": ""
-								}
-							],
+							"database": "",
+							"measurement": "",
+							"retentionPolicy": "",
+							"fields": [],
 							"tags": {},
 							"groupBy": {
 								"time": "",
 								"tags": []
 							},
 							"areTagsAccepted": false,
-							"rawText": null,
+							"rawText": "SELECT \"command\", round(\"pid\"), \"hostname\" FROM \"monitor\".\"monthly\".\"uprobe\" WHERE time > :dashboardTime:",
 							"range": null,
 							"shifts": null
 						},
@@ -240,8 +230,8 @@
 					{
 						"id": "base",
 						"type": "text",
-						"hex": "#00C9FF",
-						"name": "laser",
+						"hex": "#FFB94A",
+						"name": "pineapple",
 						"value": "-1000000000000000000"
 					}
 				],
@@ -263,8 +253,13 @@
 						"visible": true
 					},
 					{
-						"internalName": "uprobe.pid",
-						"displayName": "pid",
+						"internalName": "uprobe.hostname",
+						"displayName": "hostname",
+						"visible": true
+					},
+					{
+						"internalName": "uprobe.round",
+						"displayName": "pid (tree father)",
 						"visible": true
 					},
 					{
@@ -273,7 +268,7 @@
 						"visible": true
 					}
 				],
-				"timeFormat": "MM/DD/YYYY HH:mm:ss",
+				"timeFormat": "HH:mm:ss.SSS",
 				"decimalPlaces": {
 					"isEnforced": true,
 					"digits": 2
@@ -281,7 +276,7 @@
 				"note": "",
 				"noteVisibility": "default",
 				"links": {
-					"self": "/chronograf/v1/dashboards/1/cells/37e9bcc6-ba28-4e3c-aa3b-ba409700baa0"
+					"self": "/chronograf/v1/dashboards/1/cells/033fc23c-eff1-49ca-b3d6-94bfc04b4465"
 				}
 			}
 		],

@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -154,7 +153,7 @@ func main() {
 			comm := string(event.Str[:bytes.IndexByte(event.Str[:], 0)])
 
 			// Prepare the tags for InfluxDB
-			tags := map[string]string{"uprobe": "readline", "pid": fmt.Sprintf("%d", event.Pid), "hostname": hostname}
+			tags := map[string]string{"uprobe": "readline", "hostname": hostname}
 
 			// Prepare the fields for InfluxDB
 			fields := map[string]interface{}{
