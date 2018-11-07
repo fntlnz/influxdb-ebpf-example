@@ -1,0 +1,4 @@
+github.com/influxdata/influxdb v1.6.4 h1:K8wPlkrP02HzHTJbbUQQ1CZ2Hw6LtpG4xbNEgnlhMZU=
+github.com/influxdata/influxdb v1.6.4/go.mod h1:qZna6X/4elxqT3yI9iZYdZrWWdeFOOprn86kgg4+IzY=
+github.com/iovisor/gobpf v0.0.0-20180906170535-515408a56749 h1:irgAufJkfq3iZ6g0/QiJBn/qyp4RrVZQ2UzA0wmUU8s=
+github.com/iovisor/gobpf v0.0.0-20180906170535-515408a56749/go.mod h1:+5U5qu5UOu8YJ5oHVLvWKH7/Dr5QNHU7mZ2RfPEeXg8=

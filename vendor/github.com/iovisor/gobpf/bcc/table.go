@@ -72,8 +72,8 @@ func (table *Table) Config() map[string]interface{} {
 func (table *Table) LeafStrToBytes(leafStr string) ([]byte, error) {
 	mod := table.module.p
 
-	leafSize := C.bpf_table_leaf_size_id(mod, table.id)
-	leaf := make([]byte, leafSize)
+	leaf_size := C.bpf_table_leaf_size_id(mod, table.id)
+	leaf := make([]byte, leaf_size)
 	leafP := unsafe.Pointer(&leaf[0])
 
 	leafCS := C.CString(leafStr)
@@ -156,21 +156,6 @@ func (table *Table) Get(key []byte) ([]byte, error) {
 	return leaf, nil
 }
 
-// GetP takes a key and returns the value or nil.
-func (table *Table) GetP(key unsafe.Pointer) (unsafe.Pointer, error) {
-	fd := C.bpf_table_fd_id(table.module.p, table.id)
-
-	leafSize := C.bpf_table_leaf_size_id(table.module.p, table.id)
-	leaf := make([]byte, leafSize)
-	leafP := unsafe.Pointer(&leaf[0])
-
-	_, err := C.bpf_lookup_elem(fd, key, leafP)
-	if err != nil {
-		return nil, err
-	}
-	return leafP, nil
-}
-
 // Set a key to a value.
 func (table *Table) Set(key, leaf []byte) error {
 	fd := C.bpf_table_fd_id(table.module.p, table.id)
@@ -195,18 +180,6 @@ func (table *Table) Set(key, leaf []byte) error {
 	return nil
 }
 
-// SetP a key to a value as unsafe.Pointer.
-func (table *Table) SetP(key, leaf unsafe.Pointer) error {
-	fd := C.bpf_table_fd_id(table.module.p, table.id)
-
-	_, err := C.bpf_update_elem(fd, key, leaf, 0)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Delete a key.
 func (table *Table) Delete(key []byte) error {
 	fd := C.bpf_table_fd_id(table.module.p, table.id)
@@ -218,16 +191,6 @@ func (table *Table) Delete(key []byte) error {
 			keyStr = fmt.Sprintf("%v", key)
 		}
 		return fmt.Errorf("Table.Delete: key %v: %v", keyStr, err)
-	}
-	return nil
-}
-
-// DeleteP a key.
-func (table *Table) DeleteP(key unsafe.Pointer) error {
-	fd := C.bpf_table_fd_id(table.module.p, table.id)
-	_, err := C.bpf_delete_elem(fd, key)
-	if err != nil {
-		return err
 	}
 	return nil
 }
