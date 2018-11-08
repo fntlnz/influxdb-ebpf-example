@@ -204,7 +204,38 @@ spec:
         - name: MONITOR_HOST
           value: "http://influxdb.monitoring.svc:8086"
       containers:
-      - name: ebpf
+      - name: ebpf-execve
+        image: quay.io/fntlnz/influxdb-ebpf-example:feature-execve
+        securityContext:
+          privileged: true
+        resources:
+          limits:
+            memory: 500Mi
+          requests:
+            cpu: 500m
+            memory: 500Mi
+        env:
+        - name: MONITOR_HOST
+          value: "http://influxdb.monitoring.svc:8086"
+        - name: MONITOR_RP
+          value: "monthly"
+        - name: MONITOR_DATABASE
+          value: "monitor"
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: sys
+          mountPath: /sys
+          readOnly: true
+        - name: readlinelib
+          mountPath: /lib/libreadline.so.7.0
+          readOnly: true
+        - name: libmodules
+          mountPath: /lib/modules
+          readOnly: true
+      - name: ebpf-bashreadline
         image: quay.io/fntlnz/influxdb-ebpf-example:master
         securityContext:
           privileged: true
