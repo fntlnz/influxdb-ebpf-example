@@ -1,55 +1,149 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"time"
 
 	client "github.com/influxdata/influxdb/client/v2"
 	bpf "github.com/iovisor/gobpf/bcc"
 )
 
-// This is the C source code of the eBPF program we are loading.
-// The readline_event_t struct is 1:1 with the Go readlineEvent struct
-// and we use it as data structure to populate the "readline_events"
-// table created with BPF_PERF_OUTPUT.
-// That table is pupulated using the events coming from the uretprobe loaded
-// on the readline function symbol of the current program.
-// That symbol returns a context that is passed to the get_return_value function
-// and then after being validated the data is used to pupulate the readline_event_t struct
-// and sent back using readline_events.perf_submit to userspace.
+type EventType int32
+
+const (
+	eventArg EventType = iota
+	eventRet
+)
+
 const source string = `
 #include <uapi/linux/ptrace.h>
-
-struct readline_event_t {
-				u32 pid;
-				char str[80];
-} __attribute__((packed));
-
-BPF_PERF_OUTPUT(readline_events);
-
-int get_return_value(struct pt_regs *ctx) {
-	struct readline_event_t event = {};
-	u32 pid;
-	if (!PT_REGS_RC(ctx)) {
-		return 0;
-	}
-	pid = bpf_get_current_pid_tgid();
-	event.pid = pid;
-	bpf_probe_read(&event.str, sizeof(event.str), (void *)PT_REGS_RC(ctx));
-	readline_events.perf_submit(ctx, &event, sizeof(event));
-
-	return 0;
+#include <linux/sched.h>
+#include <linux/fs.h>
+#define ARGSIZE  128
+enum event_type {
+    EVENT_ARG,
+    EVENT_RET,
+};
+struct data_t {
+    u64 pid;  // PID as in the userspace term (i.e. task->tgid in kernel)
+    u64 ppid; // Parent PID as in the userspace term (i.e task->real_parent->tgid in kernel)
+    char comm[TASK_COMM_LEN];
+    enum event_type type;
+    char argv[ARGSIZE];
+    int retval;
+};
+BPF_PERF_OUTPUT(events);
+static int __submit_arg(struct pt_regs *ctx, void *ptr, struct data_t *data)
+{
+    bpf_probe_read(data->argv, sizeof(data->argv), ptr);
+    events.perf_submit(ctx, data, sizeof(struct data_t));
+    return 1;
+}
+static int submit_arg(struct pt_regs *ctx, void *ptr, struct data_t *data)
+{
+    const char *argp = NULL;
+    bpf_probe_read(&argp, sizeof(argp), ptr);
+    if (argp) {
+        return __submit_arg(ctx, (void *)(argp), data);
+    }
+    return 0;
+}
+int syscall__execve(struct pt_regs *ctx,
+    const char __user *filename,
+    const char __user *const __user *__argv,
+    const char __user *const __user *__envp)
+{
+    // create data here and pass to submit_arg to save stack space (#555)
+    struct data_t data = {};
+    struct task_struct *task;
+    data.pid = bpf_get_current_pid_tgid() >> 32;
+    task = (struct task_struct *)bpf_get_current_task();
+    // Some kernels, like Ubuntu 4.13.0-generic, return 0
+    // as the real_parent->tgid.
+    // We use the getPpid function as a fallback in those cases.
+    // See https://github.com/iovisor/bcc/issues/1883.
+    data.ppid = task->real_parent->tgid;
+    bpf_get_current_comm(&data.comm, sizeof(data.comm));
+    data.type = EVENT_ARG;
+    __submit_arg(ctx, (void *)filename, &data);
+    // skip first arg, as we submitted filename
+    #pragma unroll
+    for (int i = 1; i < MAX_ARGS; i++) {
+        if (submit_arg(ctx, (void *)&__argv[i], &data) == 0)
+             goto out;
+    }
+    // handle truncated argument list
+    char ellipsis[] = "...";
+    __submit_arg(ctx, (void *)ellipsis, &data);
+out:
+    return 0;
+}
+int do_ret_sys_execve(struct pt_regs *ctx)
+{
+    struct data_t data = {};
+    struct task_struct *task;
+    data.pid = bpf_get_current_pid_tgid() >> 32;
+    task = (struct task_struct *)bpf_get_current_task();
+    // Some kernels, like Ubuntu 4.13.0-generic, return 0
+    // as the real_parent->tgid.
+    // We use the getPpid function as a fallback in those cases.
+    // See https://github.com/iovisor/bcc/issues/1883.
+    data.ppid = task->real_parent->tgid;
+    bpf_get_current_comm(&data.comm, sizeof(data.comm));
+    data.type = EVENT_RET;
+    data.retval = PT_REGS_RC(ctx);
+    events.perf_submit(ctx, &data, sizeof(data));
+    return 0;
 }
 `
 
-// This is our userspace struct 1:1 with the struct readline_event_t in the eBPF program.
-type readlineEvent struct {
-	Pid uint32
-	Str [80]byte
+type execveEvent struct {
+	Pid    uint64
+	Ppid   uint64
+	Comm   [16]byte
+	Type   int32
+	Argv   [128]byte
+	RetVal int32
+}
+
+type eventPayload struct {
+	Time   string `json:"time,omitempty"`
+	Comm   string `json:"comm"`
+	Pid    uint64 `json:"pid"`
+	Ppid   string `json:"ppid"`
+	Argv   string `json:"argv"`
+	RetVal int32  `json:"retval"`
+}
+
+// getPpid is a fallback to read the parent PID from /proc.
+// Some kernel versions, like 4.13.0 return 0 getting the parent PID
+// from the current task, so we need to use this fallback to have
+// the parent PID in any kernel.
+func getPpid(pid uint64) uint64 {
+	f, err := os.OpenFile(fmt.Sprintf("/proc/%d/status", pid), os.O_RDONLY, os.ModePerm)
+	if err != nil {
+		return 0
+	}
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		text := sc.Text()
+		if strings.Contains(text, "PPid:") {
+			f := strings.Fields(text)
+			i, _ := strconv.ParseUint(f[len(f)-1], 10, 64)
+			return i
+		}
+	}
+	return 0
 }
 
 func main() {
@@ -61,9 +155,6 @@ func main() {
 	mrp := os.Getenv("MONITOR_RP")
 	// MONITOR_HOST is the url of the target influxdb, e.g: https://influxdb.monitoring.svc.cluster.local:8086
 	maddr := os.Getenv("MONITOR_HOST")
-	// URETPROBE_BINARY is the path of the binary (or library) we want to analyze
-	binaryName := os.Getenv("URETPROBE_BINARY")
-
 	// Get the current node hostname
 	hostname := os.Getenv("HOSTNAME")
 
@@ -79,10 +170,6 @@ func main() {
 		log.Fatalf("MONITOR_HOST environment variable missing")
 	}
 
-	if len(binaryName) == 0 {
-		binaryName = "/bin/bash"
-	}
-
 	c, err := client.NewHTTPClient(client.HTTPConfig{
 		Addr: maddr,
 	})
@@ -92,28 +179,35 @@ func main() {
 	}
 
 	// This creates a new module to compile our eBPF code asynchronously
-	m := bpf.NewModule(source, []string{})
+	m := bpf.NewModule(strings.Replace(source, "MAX_ARGS", strconv.FormatUint(20, 10), -1), []string{})
 	defer m.Close()
 
-	// This loads the uprobe program and sets the "get_return_value" as entrypoint
-	readlineUretprobe, err := m.LoadUprobe("get_return_value")
+	fnName := bpf.GetSyscallFnName("execve")
+
+	kprobe, err := m.LoadKprobe("syscall__execve")
 	if err != nil {
-		log.Fatalf("Failed to load get_return_value: %s", err)
+		log.Fatalf("Failed to load syscall__execve: %s", err)
 	}
 
-	// This attaches the uretprobe to the readline function of the passed binary.
-	// This will consider every process (old and new) since we didn't specify the pid to look for.
-	err = m.AttachUretprobe(binaryName, "readline", readlineUretprobe, -1)
-	if err != nil {
-		log.Fatalf("Failed to attach return_value: %s", err)
+	if err := m.AttachKprobe(fnName, kprobe); err != nil {
+		log.Fatalf("Failed to attach syscall__execve: %s", err)
 	}
 
-	// This creates a new perf table "readline_events" to look to,
+	kretprobe, err := m.LoadKprobe("do_ret_sys_execve")
+	if err != nil {
+		log.Fatalf("Failed to load do_ret_sys_execve: %s", err)
+	}
+
+	if err := m.AttachKretprobe(fnName, kretprobe); err != nil {
+		log.Fatalf("Failed to attach do_ret_sys_execve: %s", err)
+	}
+
+	// This creates a new perf table "execve_events" to look to,
 	// this must have the same name as the table defined in the eBPF progrma with BPF_PERF_OUTPUT.
-	table := bpf.NewTable(m.TableId("readline_events"), m)
+	table := bpf.NewTable(m.TableId("events"), m)
 
 	// This channel will contain our results
-	channel := make(chan []byte)
+	channel := make(chan []byte, 1000)
 
 	// Link our channel with the perf table
 	perfMap, err := bpf.InitPerfMap(table, channel)
@@ -127,7 +221,7 @@ func main() {
 
 	// Goroutine to handle the events
 	go func() {
-		var event readlineEvent
+		var event execveEvent
 		for {
 			// Create the influxdb client.
 			bp, err := client.NewBatchPoints(client.BatchPointsConfig{
@@ -143,26 +237,27 @@ func main() {
 			data := <-channel
 
 			// Read the data and populate the event struct
-			err = binary.Read(bytes.NewBuffer(data), binary.LittleEndian, &event)
+			err = binary.Read(bytes.NewBuffer(data), bpf.GetHostByteOrder(), &event)
 			if err != nil {
 				log.Printf("failed to decode received data: %s", err)
 				continue
 			}
 
 			// Convert the C string to a Go string
-			comm := string(event.Str[:bytes.IndexByte(event.Str[:], 0)])
-
+			argv := string(event.Argv[:bytes.IndexByte(event.Argv[:], 0)])
+			comm := string(event.Comm[:bytes.IndexByte(event.Comm[:], 0)])
 			// Prepare the tags for InfluxDB
-			tags := map[string]string{"uprobe": "readline", "hostname": hostname}
+			tags := map[string]string{"krpobe": "execve", "hostname": hostname}
 
 			// Prepare the fields for InfluxDB
 			fields := map[string]interface{}{
-				"pid":     event.Pid,
-				"command": comm,
+				"argv":   argv,
+				"comm":   comm,
+				"retval": event.RetVal,
 			}
 
 			// Create the new point to write to InfluxDB
-			pt, err := client.NewPoint("uprobe", tags, fields, time.Now())
+			pt, err := client.NewPoint("kprobe", tags, fields, time.Now())
 			if err != nil {
 				log.Printf("%v", err)
 				continue
