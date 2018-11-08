@@ -12,6 +12,8 @@ spec:
   ports:
   - port: 8086
     name: server
+  - port: 8082
+    name: flux
   selector:
     component: influxdb
   publishNotReadyAddresses: true
@@ -40,16 +42,20 @@ spec:
     spec:
       containers:
       - name: influxdb
-        image: docker.io/influxdb:1.6
+        image: quay.io/influxdb/influxdb:nightly
         lifecycle:
           postStart:
             exec:
               command:
                 - /bin/sh
                 - "-c"
-                - until curl -s http://localhost:8086/ping; do sleep 1; done; influx -execute "CREATE DATABASE \"${MONITOR_DATABASE}\" WITH DURATION 30d NAME ${MONITOR_RP}"
+                - until curl -s http://localhost:8086/ping; do sleep 1; done; influx -execute "CREATE DATABASE \"${MONITOR_DATABASE}\" WITH DURATION 30d NAME ${MONITOR_RP}" || true
         env:
           - name: INFLUXDB_IFQL_ENABLED
+            value: "true"
+          - name: INFLUXDB_DATA_INDEX_VERSION
+            value: "tsi1"
+          - name: INFLUXDB_HTTP_FLUX_ENABLED
             value: "true"
           - name: INFLUXDB_LOGGING_LEVEL
             value: "error"
@@ -66,7 +72,7 @@ spec:
           - containerPort: 8086
             name: server
           - containerPort: 8082
-            name: ifql
+            name: flux
   volumeClaimTemplates:
   - metadata:
       namespace: monitoring
@@ -140,7 +146,7 @@ spec:
     spec:
       containers:
       - name: chronograf
-        image:  quay.io/influxdb/chronograf:nightly
+        image:  quay.io/influxdb/chronograf:1.7.1
         env:
           - name: RESOURCES_PATH
             value: "/usr/share/chronograf/resources"
