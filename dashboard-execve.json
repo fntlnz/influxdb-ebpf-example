@@ -14,10 +14,10 @@
 			{
 				"i": "7acfd762-6b1b-47b5-a5d0-f4ab40acb101",
 				"x": 0,
-				"y": 3,
+				"y": 5,
 				"w": 12,
 				"h": 3,
-				"name": "count",
+				"name": "count - execve",
 				"queries": [
 					{
 						"query": "SELECT count(\"comm\") AS \"count_comm\" FROM \"monitor\".\"monthly\".\"kprobe\" WHERE time > :dashboardTime: GROUP BY time(:interval:) FILL(null)",
@@ -145,7 +145,7 @@
 			{
 				"i": "bd6b0081-89c4-432a-9c63-4dd25dec6b19",
 				"x": 0,
-				"y": 0,
+				"y": 8,
 				"w": 12,
 				"h": 3,
 				"name": "retval",
@@ -268,9 +268,9 @@
 			{
 				"i": "d2ba531c-86e3-4c5e-b160-8ee26514423c",
 				"x": 0,
-				"y": 6,
+				"y": 0,
 				"w": 12,
-				"h": 7,
+				"h": 5,
 				"name": "kprobe - execve",
 				"queries": [
 					{
