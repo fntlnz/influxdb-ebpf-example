@@ -254,6 +254,7 @@ func main() {
 				"argv":   argv,
 				"comm":   comm,
 				"retval": event.RetVal,
+				"pid":    fmt.Sprintf("%d", event.Pid),
 			}
 
 			// Create the new point to write to InfluxDB

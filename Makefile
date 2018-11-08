@@ -13,7 +13,7 @@ GO ?= go
 DOCKER ?= docker
 
 build:
-	GO111MODULE=on $(GO) build $(BUILDFLAGS) $(LDFLAGS) $(OUTPUTFLAGS) .
+	$(GO) build $(BUILDFLAGS) $(LDFLAGS) $(OUTPUTFLAGS) .
 
 image/build:
 	$(DOCKER) build -t $(IMAGE) .

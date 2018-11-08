@@ -1,7 +1,10 @@
-# github.com/influxdata/influxdb v1.6.4
+# github.com/influxdata/influxdb v1.7.0
 github.com/influxdata/influxdb/client/v2
 github.com/influxdata/influxdb/models
 github.com/influxdata/influxdb/pkg/escape
+# github.com/influxdata/platform v0.0.0-20181108014235-cc1070fc1c2f
+github.com/influxdata/platform/models
+github.com/influxdata/platform/pkg/escape
 # github.com/iovisor/gobpf v0.0.0-20180906170535-515408a56749
 github.com/iovisor/gobpf/bcc
 github.com/iovisor/gobpf/pkg/cpuonline
